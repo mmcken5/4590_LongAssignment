@@ -1,28 +1,11 @@
----
-title: "4590_LongAssignment_RMarkdown"
-output: html_document
----
+R Code Chunks
+================
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+With R Markdown, you can insert R code like so:
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
+```{r qplot, fig.width=4, fig.height=3, message=FALSE}
+# quick summary and plot
+library(ggplot2)
 summary(cars)
+qplot(speed, dist, data=cars) + geom_smooth()
 ```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
