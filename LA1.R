@@ -3,10 +3,10 @@
 # ===========================================================================================================================#
 # DONE # 1. Logic if 'is firm publicly traded?' is FALSE/TRUE                                                                #
 # DONE # 2. Logic if 'Will the cost of debt change in the stable period?' is FALSE/TRUE                                      #
-# 3. Logic for 'Do you want to enter cost of equity directly'                                                                #
-# 4. Logic for 'To change the beta in the stable period, enter the beta for stable period'                                   #
-# 5. Logic for 'To change the debt ratio in the stable growth period enter the debt ratio for the stable growth period'      #
-# 8. Properly have input arguments to the function                                                                           #
+# DONE # 3. Logic for 'Do you want to enter cost of equity directly'                                                         #
+# DONE # 4. Logic for 'To change the beta in the stable period, enter the beta for stable period'                                   #
+# 5. Logic for 'To change the debt ratio (debtratio_stable) in the stable growth period enter the debt ratio for the stable growth period'      #
+# DONE # 8. Properly have input arguments to the function                                                                    #
 # ===========================================================================================================================#
 
 
@@ -30,27 +30,35 @@ inputs <- list(
     debt_capital = 0,
     
     ###Cost of Equity
-    capm = FALSE,
+    #capm = FALSE,
     e_rate = .07,
     
     ####CAPM Model
-    beta = 1,
+    beta_growth = 1,
+    #####beta to change in stable period
+    beta_stable = 1,
     rf_rate = .02,
     rm_rate = .05,
-    capm_rate = .02 + (1 * (.05 - .02)),
+    capm_rate_growth = rf_rate + (beta_growth * (rm_rate - rf_rate)),
+    capm_rate_stable = rf_rate + (beta_stable * (rm_rate - rf_rate)),
     
     ###Cost of Debt
     d_rate = .025,
     
+    excess_period = 20L,
+    cap_period = 5L,
+    
+    fast_period = 7L,
+    stable_period = excess_period - cap_period,
+    
     ###Assumptions
-    revenue_growth = c(rep(.06, 7), rep(.03, 13)),
     growth_fast = .06,
     growth_slow = .03,
+    revenue_growth = c(rep(growth_fast, fast_period), rep(growth_slow, stable_period)),
     cogs_asrev = .8165,
     workingcap_asrev = .05,
     workingcap_stable = .01,
-    #####beta to change in stable period
-    beta_stable = 1,
+    
     #####debt ratio in the stable period
     debtratio = TRUE,
     debtratio_stable = .15,
@@ -62,17 +70,13 @@ inputs <- list(
     #% of capex to depreciation in terminal
     capex_depreciation = 1.1,
     
-    excess_period = 20L,
-    cap_period = 5L,
     
-    fast_period = 7L,
-    stable_period = 20 - 7,
-    
+    # ASSUMPTION: Assuming same fast and slow growth rate as revenue growth rate
     ###Depreciation Growth
-    depreciation_growth = c(-0.0683317211644177, rep(.06, 5), rep(.03, 14)),
+    depreciation_growth = c(-0.0683317211644177, rep(growth_fast, 5), rep(growth_slow, 14)),
     
     ###CAPEX Growth
-    capex_growth = c(.023939668853227, rep(.06, 4), rep(.03, 15))
+    capex_growth = c(.023939668853227, rep(growth_fast, 4), rep(growth_slow, 15))
 )
 
 DCF_value <- function(inputs){
@@ -93,14 +97,16 @@ DCF_value <- function(inputs){
   debt_capital <- inputs$debt_capital
   
   ###Cost of Equity
-  capm <- inputs$capm
+  #capm <- inputs$capm
   e_rate <- inputs$e_rate
   
   ####CAPM Model
-  beta <- inputs$beta
+  beta_growth <- inputs$beta_growth
+  beta_stable <- inputs$beta_stable
   rf_rate <- inputs$rf_rate
   rm_rate <- inputs$rm_rate
-  capm_rate <- inputs$capm_rate
+  capm_rate_stable <- inputs$capm_rate_stable
+  capm_rate_growth <- inputs$capm_rate_growth
   
   ###Cost of Debt
   d_rate <- inputs$d_rate
@@ -112,8 +118,7 @@ DCF_value <- function(inputs){
   cogs_asrev <- inputs$cogs_asrev
   workingcap_asrev <- inputs$workingcap_asrev
   workingcap_stable <- inputs$workingcap_stable
-  #####beta to change in stable period
-  beta_stable <- inputs$beta_stable
+  
   #####debt ratio in the stable period
   debtratio <- inputs$debtratio
   debtratio_stable <- inputs$debtratio_stable
@@ -143,6 +148,18 @@ DCF_value <- function(inputs){
   debt_rate_stable_calc <- 0
   equity_to_capital <- 0
   
+  # Initialize vectors (for two-stage DCF)
+  beta_vector <- c(rep(beta_growth, fast_period), rep(beta_stable, stable_period))
+  capm_vector <- c(rep(capm_rate_growth, fast_period), rep(capm_rate_stable, stable_period))
+  
+  
+  # Determine if equity rate will be entered directly, or need to calculated value
+  if (is.null(e_rate)){
+    e_rate <- capm_vector
+  }
+  else{
+    e_rate <- c(rep(e_rate, excess_period))
+  }
   
   # Determining debt value by checking if firm is public
   if (public){
@@ -242,12 +259,12 @@ DCF_value <- function(inputs){
   dcf_fcff <- dcf_ebit_sub + dcf_depreciation - dcf_capex - dcf_workingcapital
   
   #Cost of Debt
-  dcf_costdebt <- debt_rate_stable_calc
+  dcf_costdebt <- c(rep(debt_rate_stable_calc, excess_period))
   
   #Cost of Equity/Beta/debt ratio/cost of capital
-  dcf_beta <- beta
+  dcf_beta <- beta_vector
   dcf_costequity <- e_rate
-  dcf_debtratio <- 1 - equity_to_capital
+  dcf_debtratio <- c(rep(1 - equity_to_capital), excess_period)
   dcf_costcapital <- (dcf_costequity * (1 - dcf_debtratio)) + (dcf_costdebt * dcf_debtratio)
   
   #Cum. WACC
@@ -294,10 +311,10 @@ DCF_value <- function(inputs){
   DebtMarketValue <- debt_val
   EquityMarketValue <- firmvalue - DebtMarketValue
   ValuePerShare <- EquityMarketValue / m_shares
+  
   #######################
-  DebtMarketValue
-  EquityMarketValue
-  ValuePerShare
+  #retVals <- c(DebtMarketValue, EquityMarketValue, ValuePerShare)
+  return(ValuePerShare)
 }
 
 DCF_value(inputs)
